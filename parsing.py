@@ -2,17 +2,32 @@ import openai
 import smtplib
 import imaplib
 import email
+from dotenv import load_dotenv
 from email.header import decode_header
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from langchain.vectorstores import FAISS
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.schema import Document
+import os
 
-openai.api_key = "your_openai_api_key"
+load_dotenv()
+openai_api_key = os.getenv("openai_api_key")
+
+embeddings = OpenAIEmbeddings(openai_api_key = os.getenv("openai_api_key"))
+
+vector_db_path = "vector_store"
+if os.path.exists(vector_db_path):
+    vector_db = FAISS.load_local(vector_db_path, embeddings)
+else:
+    vector_db = FAISS(embeddings)
+
+
 
 
 imap_host = "imap.naver.com"
-imap_user = "dnjswls0138@naver.com"
-imap_password = "!dnjswls12"
-
+imap_user = os.getenv("imap_user_ID")
+imap_password = os.getenv("imap_user_PW")
 
 smtp_host = "smtp.naver.com"
 smtp_port = 587
@@ -99,5 +114,3 @@ def send_email(subject, reply):
 
 if __name__ == "__main__":
     fetch_emails()
-
-

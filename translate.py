@@ -1,78 +1,22 @@
-# import openai
-# import smtplib
-# from email.mime.text import MIMEText
-# from email.mime.multipart import MIMEMultipart
-# from langchain.vectorstores import FAISS
-# from langchain.embeddings.openai import OpenAIEmbeddings
-# from langchain.schema import Document
-# import os
-
-# embeddings = OpenAIEmbeddings(openai_api_key="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")
-
-# vector_db_path = "vector_store"
-# if os.path.exists(vector_db_path):
-#     vector_db = FAISS.load_local(vector_db_path, embeddings)
-# else:
-#     vector_db = FAISS(embeddings)
-
-# openai.api_key = "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"
-
-# text = "OnDemand3D: 2D 및 3D 진단을 위한 의료 영상 소프트웨어로, 정확한 진단과 치료 계획을 지원합니다."
-# target_language = "Japanese" , " En" , "Spanish" , "French" , "German" , "Chinese" , "Russian" , "Portuguese" , "Italian"
-
-# response = openai.ChatCompletion.create(
-#     model="gpt-3.5-turbo",
-#     messages=[
-#         {"role": "system", "content": "You are a helpful assistant for translating languages."},
-#         {"role": "user", "content": f"Translate this text to {target_language}: {text}"}
-#     ],
-#     temperature=0.5,
-#     max_tokens=200
-# )
-
-
-# translated_text = response.choices[0].message['content']
-# print("Translated Text:", translated_text)
-
-# sender_email = "dnjswls0138@naver.com" 
-# receiver_email = "wjlee@cybermed.co.kr"  
-# email_password = "=!dnjswls12"  
-
-# subject = "Translated Text"
-# message = MIMEMultipart()
-# message["From"] = sender_email
-# message["To"] = receiver_email
-# message["Subject"] = subject
-
-# message_body = f"Here is the translated text:\n\n{translated_text}"
-# message.attach(MIMEText(message_body, "plain"))
-
-
-# try:
-#     with smtplib.SMTP("smtp.naver.com", 587) as server: 
-#         server.starttls()  
-#         server.login("dnjswls0138@naver.com", "!dnjswls12") 
-#         server.sendmail(sender_email, receiver_email, message.as_string()) 
-#         print("Email sent successfully!")
-# except Exception as e:
-#     print(f"Failed to send email: {e}")
-
-
-
 import openai
 import smtplib
 import imaplib
 import email
+import os
+from dotenv import load_dotenv
 from email.header import decode_header
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from langchain.vectorstores import FAISS
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.schema import Document
-import os
 
-openai.api_key = "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"
-embeddings = OpenAIEmbeddings(openai_api_key="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")
+
+load_dotenv()
+openai_api_key = os.getenv("openai_api_key")
+
+
+embeddings = OpenAIEmbeddings(openai_api_key = os.getenv("openai_api_key"))
 vector_db_path = "vector_store"
 
 if os.path.exists(vector_db_path):
