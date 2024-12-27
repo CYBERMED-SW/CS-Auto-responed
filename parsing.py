@@ -13,21 +13,31 @@ import os
 
 load_dotenv()
 openai_api_key = os.getenv("openai_api_key")
+if not openai_api_key:
+    raise ValueError("OpenAI API key not found. Please check your .env file or environment variables.")
 
 embeddings = OpenAIEmbeddings(openai_api_key = os.getenv("openai_api_key"))
+# model="text-embedding-3-small"
 
 vector_db_path = "vector_store"
+
 if os.path.exists(vector_db_path):
     vector_db = FAISS.load_local(vector_db_path, embeddings)
 else:
-    vector_db = FAISS(embeddings)
+    documents = [
+        Document(page_content="This is the first document."),
+        Document(page_content="This is the second document.")
+    ]
+    vector_db = FAISS.from_documents(documents, embeddings)
+    vector_db.save_local(vector_db_path)
 
 
-
+ 
 
 imap_host = "imap.naver.com"
 imap_user = os.getenv("imap_user_ID")
 imap_password = os.getenv("imap_user_PW")
+
 
 smtp_host = "smtp.naver.com"
 smtp_port = 587
@@ -69,7 +79,10 @@ def fetch_emails():
         print(f"Failed to fetch emails: {e}")
 
 def process_email(subject, body):
-    print("Processing email...")
+    print(f"Processing email: {subject}")
+
+    store_email_in_vector_db(subject, body)
+
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
@@ -94,6 +107,12 @@ def process_email(subject, body):
     reply = response.choices[0].message['content']
     print(f"Generated Reply: {reply}")
 
+def store_email_in_vector_db(subject, body):
+    document = Document(page_content=f"Subject: {subject}\n\n{body}")
+    vector_db.add_documents([document])
+    vector_db.save_local(vector_db_path)
+    print(f"Stored email: {subject}")
+
     send_email(subject, reply)
 
 def send_email(subject, reply):
@@ -114,3 +133,7 @@ def send_email(subject, reply):
 
 if __name__ == "__main__":
     fetch_emails()
+
+
+
+

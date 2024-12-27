@@ -12,8 +12,11 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.schema import Document
 
 
+
 load_dotenv()
 openai_api_key = os.getenv("openai_api_key")
+if not openai_api_key:
+    raise ValueError("OpenAI API key not found in environment variables.")
 
 
 embeddings = OpenAIEmbeddings(openai_api_key = os.getenv("openai_api_key"))
@@ -22,7 +25,14 @@ vector_db_path = "vector_store"
 if os.path.exists(vector_db_path):
     vector_db = FAISS.load_local(vector_db_path, embeddings)
 else:
-    vector_db = FAISS(embeddings)
+        vector_db = FAISS.from_documents([], embeddings)
+        vector_db.save_local(vector_db_path)
+        
+if not documents:
+    raise ValueError("Document list is empty. Please provide valid documents.")
+
+    vector_db = FAISS.from_documents(documents, OpenAIEmbeddings(openai_api_key=os.getenv("openai_api_key")))
+    vector_db.save_local(vector_db_path)
 
 imap_host = "imap.naver.com"
 imap_user = "dnjswls0138@naver.com"
@@ -68,7 +78,7 @@ def fetch_emails():
     except Exception as e:
         print(f"Failed to fetch emails: {e}")
 
-def store_email_in_vector_db(subject, body):
+def store_email_in_vector_db(subject, body, sender):
     document = Document(page_content=f"Subject: {subject}\n\n{body}")
     # document_ID
     vector_db.add_documents([document])
