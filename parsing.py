@@ -14,7 +14,7 @@ import os
 load_dotenv()
 openai_api_key = os.getenv("openai_api_key")
 if not openai_api_key:
-    raise ValueError("OpenAI API key not found. Please check your .env file or environment variables.")
+    raise ValueError("OpenAI API key not found.")
 
 embeddings = OpenAIEmbeddings(openai_api_key = os.getenv("openai_api_key"))
 
@@ -38,7 +38,7 @@ sender_email = imap_user
 email_password = imap_password
 
 if not imap_user or not imap_password or not openai_api_key:
-    raise ValueError("Environment variables missing. Please check your .env file.")
+    raise ValueError("Please check your .env file.")
 
 def fetch_emails():
     try:
@@ -79,20 +79,8 @@ def fetch_emails():
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": "You are an assistant for classifying emails and drafting responses."},
-            {"role": "user", "content": f"Classify this email:\nSubject: {subject}\nBody: {body}"}
-        ],
-        temperature=0.5,
-        max_tokens=300
-    )
-    classification = response.choices[0].message['content']
-    print(f"Classification: {classification}")
-
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant for drafting email responses."},
-            {"role": "user", "content": f"Draft a response for the following email:\nSubject: {subject}\nBody: {body}"}
+            {"role": "system", "content": ""},
+            {"role": "user", "content": f"email:\nSubject: {subject}\nBody: {body}"}
         ],
         temperature=0.5,
         max_tokens=300
@@ -102,16 +90,31 @@ def fetch_emails():
 
     send_email(subject, reply)
 
-def process_email(subject, body):
-    print(f"Processing email: {subject}")
-
-    store_email_in_vector_db(subject, body)
+def store_email_in_vector_db(subject, body):
     document = Document(page_content=f"Subject: {subject}\n\n{body}")
     vector_db.add_documents([document])
     vector_db.save_local(vector_db_path)
     print(f"Stored email: {subject}")
 
+def process_email(subject, body):
+    print(f"Processing email: {subject}")
+    document = Document(page_content=f"Subject: {subject}\n\n{body}")
+    vector_db.add_documents([document])
+    vector_db.save_local(vector_db_path)
+    print(f"Stored email: {subject}")
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": ""},
+            {"role": "user", "content": f"email:\nSubject: {subject}\nBody: {body}"}
+        ],
+        temperature=0.5,
+        max_tokens=300
+    )
+    reply = response.choices[0].message['content']
+    print(f"Generated Reply: {reply}")
     send_email(subject, reply)
+
 
 def send_email(subject, reply, receiver_email):
     try:
