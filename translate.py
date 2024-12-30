@@ -25,8 +25,8 @@ else:
     vector_db = FAISS(embeddings)
 
 imap_host = "imap.naver.com"
-imap_user = "dnjswls0138@naver.com"
-imap_password = "!dnjswls12"
+imap_user = "cybermed@gmail.com"
+imap_password = "?????"
 
 smtp_host = "smtp.naver.com"
 smtp_port = 587

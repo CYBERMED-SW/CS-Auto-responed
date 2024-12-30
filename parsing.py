@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from email.header import decode_header
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.schema import Document
 import os
@@ -14,15 +14,13 @@ import os
 load_dotenv()
 openai_api_key = os.getenv("openai_api_key")
 
-embeddings = OpenAIEmbeddings(openai_api_key = os.getenv("openai_api_key"))
+# embeddings = OpenAIEmbeddings(openai_api_key = os.getenv("openai_api_key"))
 
-vector_db_path = "vector_store"
-if os.path.exists(vector_db_path):
-    vector_db = FAISS.load_local(vector_db_path, embeddings)
-else:
-    vector_db = FAISS(embeddings)
-
-
+# vector_db_path = "vector_store"
+# if os.path.exists(vector_db_path):
+#     vector_db = FAISS.load_local(vector_db_path, embeddings)
+# else:
+#     vector_db = FAISS(embeddings)
 
 
 imap_host = "imap.naver.com"
@@ -33,6 +31,9 @@ smtp_host = "smtp.naver.com"
 smtp_port = 587
 sender_email = imap_user
 email_password = imap_password
+
+if not imap_user or not imap_password or not openai_api_key:
+    raise ValueError("Environment variables missing. Please check your .env file.")
 
 def fetch_emails():
     try:
@@ -51,8 +52,11 @@ def fetch_emails():
                     subject = decode_header(msg["Subject"])[0][0]
                     if isinstance(subject, bytes):
                         subject = subject.decode()
+                    sender_email = decode_header(msg["From"])[0][0]
+                    if isinstance(sender_email, bytes):
+                        sender_email = sender_email.decode()
                     print(f"Subject: {subject}")
-
+                    print(f"Sender: {sender_email}")
                     if msg.is_multipart():
                         for part in msg.walk():
                             if part.get_content_type() == "text/plain":
@@ -63,7 +67,6 @@ def fetch_emails():
                         body = msg.get_payload(decode=True).decode()
                         print(f"Body: {body}")
                         process_email(subject, body)
-
         mail.logout()
     except Exception as e:
         print(f"Failed to fetch emails: {e}")
@@ -94,23 +97,24 @@ def process_email(subject, body):
     reply = response.choices[0].message['content']
     print(f"Generated Reply: {reply}")
 
-    send_email(subject, reply)
+    send_email(subject, reply, sender_email)
 
-def send_email(subject, reply):
+def send_email(subject, reply, receiver_email):
     try:
         message = MIMEMultipart()
         message["From"] = sender_email
-        message["To"] = "receiver@example.com"
+        message["To"] = receiver_email
         message["Subject"] = f"Re: {subject}"
         message.attach(MIMEText(reply, "plain"))
 
         with smtplib.SMTP(smtp_host, smtp_port) as server:
             server.starttls()
             server.login(sender_email, email_password)
-            server.sendmail(sender_email, "receiver@example.com", message.as_string())
+            server.sendmail(sender_email, receiver_email, message.as_string())
             print("Response email sent successfully!")
     except Exception as e:
         print(f"Failed to send email: {e}")
 
 if __name__ == "__main__":
     fetch_emails()
+
