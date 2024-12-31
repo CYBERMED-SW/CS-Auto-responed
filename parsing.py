@@ -8,13 +8,15 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from langchain_community.vectorstores import FAISS
 from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.document_loaders import PyPDFLoader
 from langchain.schema import Document
 import os
+import logging
 
 load_dotenv()
 openai_api_key = os.getenv("openai_api_key")
 if not openai_api_key:
-    raise ValueError("OpenAI API key not found.")
+    raise ValueError("API KEY ERROR.")
 
 embeddings = OpenAIEmbeddings(openai_api_key = os.getenv("openai_api_key"))
 
@@ -23,8 +25,6 @@ if os.path.exists(vector_db_path):
     vector_db = FAISS.load_local(vector_db_path, embeddings)
 else:
     vector_db = FAISS(embeddings)
-
-
 
 
 imap_host = "imap.naver.com"
@@ -38,7 +38,34 @@ sender_email = imap_user
 email_password = imap_password
 
 if not imap_user or not imap_password or not openai_api_key:
-    raise ValueError("Please check your .env file.")
+    print("Missing environment variables.")
+    raise ValueError(".env file ERROR.")
+else:
+    print("Loaded successfully.")
+
+loader = PyPDFLoader("C:\Users\cybermed\Downloads\SPRI_AI_Brief_2023년12월호_F.pdf")
+documents = loader.load()
+
+vector_db = FAISS.from_documents(documents, embeddings)
+vector_db.save_local("vector_store")
+
+retriever = vector_db.as_retriever()
+
+query = "Explain the main concept in the document."
+relevant_docs = retriever.get_relevant_documents(query)
+context = "\n".join([doc.page_content for doc in relevant_docs])
+
+response = openai.ChatCompletion.create(
+    model="gpt-3.5-turbo",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": f"Using the following context:\n{context}\nAnswer the query: {query}"}
+    ],
+    temperature=0.5,
+    max_tokens=300
+)
+
+print("response:", response.choices[0].message['content'])
 
 def fetch_emails():
     try:
@@ -48,8 +75,9 @@ def fetch_emails():
 
         status, messages = mail.search(None, "UNSEEN")
         email_ids = messages[0].split()
+        print(f"Found {len(email_ids)} unseen emails.") #미확인 메일 로그
 
-        for email_id in email_ids[-5:]: # 5개월 동안 vector < 
+        for email_id in email_ids[-5:]: # 5개 메일 우선적 vectordb에 저장장 추후 UNSEEN기준 background check로 수정 예정 
             status, msg_data = mail.fetch(email_id, "(RFC822)")
             for response_part in msg_data:
                 if isinstance(response_part, tuple):
@@ -67,11 +95,11 @@ def fetch_emails():
                             if part.get_content_type() == "text/plain":
                                 body = part.get_payload(decode=True).decode()
                                 print(f"Body: {body}")
-                                process_email(subject, body)
+                                process_email(subject, body, sender_email)
                     else:
                         body = msg.get_payload(decode=True).decode()
                         print(f"Body: {body}")
-                        process_email(subject, body)
+                        process_email(subject, body, sender_email)
         mail.logout()
     except Exception as e:
         print(f"Failed to fetch emails: {e}")
@@ -89,12 +117,6 @@ def fetch_emails():
     print(f"Generated Reply: {reply}")
 
     send_email(subject, reply)
-
-def store_email_in_vector_db(subject, body):
-    document = Document(page_content=f"Subject: {subject}\n\n{body}")
-    vector_db.add_documents([document])
-    vector_db.save_local(vector_db_path)
-    print(f"Stored email: {subject}")
 
 def process_email(subject, body):
     print(f"Processing email: {subject}")
@@ -115,7 +137,6 @@ def process_email(subject, body):
     print(f"Generated Reply: {reply}")
     send_email(subject, reply)
 
-
 def send_email(subject, reply, receiver_email):
     try:
         message = MIMEMultipart()
@@ -134,3 +155,5 @@ def send_email(subject, reply, receiver_email):
 
 if __name__ == "__main__":
     fetch_emails()
+
+
